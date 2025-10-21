@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Vystelior Radio - AI Powered Radio Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .radio-player {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .play-button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .play-button:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
+
+        .play-button.stop {
+            background: #ef4444;
+        }
+
+        .play-button.stop:hover {
+            background: #dc2626;
+        }
+
+        .now-playing {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .track-info {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .track-type {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-right: 10px;
+        }
+
+        .up-next {
+            opacity: 0.8;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 1rem;
+            border-radius: 10px;
+        }
+
+        .listeners {
+            margin-top: 1rem;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .radio-player {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Vystelior Radio</h1>
+            <p>Your AI-Powered Personal Radio Station</p>
+        </div>
+
+        <div class="radio-player">
+            <button id="playButton" class="play-button">▶️ Start Radio</button>
+            
+            <div id="nowPlaying" class="now-playing" style="display: none;">
+                <div class="track-info">
+                    <span id="trackType" class="track-type">🎵</span>
+                    <strong id="trackTitle">Track Title</strong>
+                </div>
+                <audio id="audioPlayer" controls></audio>
+                <div class="up-next">
+                    Next: <span id="nextTrack">Loading...</span>
+                </div>
+            </div>
+
+            <div class="listeners">
+                📻 Broadcasting 24/7
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class RadioStation {
+            constructor() {
+                this.isPlaying = false;
+                this.currentTrackIndex = 0;
+                this.audio = document.getElementById('audioPlayer');
+                this.playButton = document.getElementById('playButton');
+                this.nowPlaying = document.getElementById('nowPlaying');
+                this.trackTitle = document.getElementById('trackTitle');
+                this.trackType = document.getElementById('trackType');
+                this.nextTrack = document.getElementById('nextTrack');
+                
+                // Your radio playlist - UPDATE THESE WITH YOUR ACTUAL FILES
+                this.playlist = [
+                    {
+                        type: 'song',
+                        title: 'First Song - Artist Name',
+                        file: 'music/song1.mp3',
+                        duration: 180
+                    },
+                    {
+                        type: 'voice',
+                        title: 'AI Host: Welcome to the station!',
+                        file: 'voiceovers/welcome.mp3',
+                        duration: 10
+                    },
+                    {
+                        type: 'song',
+                        title: 'Second Song - Another Artist',
+                        file: 'music/song2.mp3', 
+                        duration: 240
+                    },
+                    {
+                        type: 'voice',
+                        title: 'AI Host: That was great! More coming up...',
+                        file: 'voiceovers/transition1.mp3',
+                        duration: 8
+                    }
+                    // Add more tracks here as you get them
+                ];
+
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.playButton.addEventListener('click', () => this.toggleRadio());
+                
+                this.audio.addEventListener('ended', () => {
+                    setTimeout(() => this.playNext(), 1000);
+                });
+            }
+
+            toggleRadio() {
+                if (this.isPlaying) {
+                    this.stopRadio();
+                } else {
+                    this.startRadio();
+                }
+            }
+
+            startRadio() {
+                this.isPlaying = true;
+                this.playButton.textContent = '⏸️ Stop Radio';
+                this.playButton.classList.add('stop');
+                this.nowPlaying.style.display = 'block';
+                
+                this.playCurrentTrack();
+            }
+
+            stopRadio() {
+                this.isPlaying = false;
+                this.playButton.textContent = '▶️ Start Radio';
+                this.playButton.classList.remove('stop');
+                this.audio.pause();
+                this.audio.currentTime = 0;
+            }
+
+            playCurrentTrack() {
+                const track = this.playlist[this.currentTrackIndex];
+                const nextTrack = this.playlist[(this.currentTrackIndex + 1) % this.playlist.length];
+                
+                // Update UI
+                this.trackTitle.textContent = track.title;
+                this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
+                this.nextTrack.textContent = nextTrack.title;
+                
+                // Play audio
+                this.audio.src = track.file;
+                this.audio.play().catch(error => {
+                    console.log('Audio play failed:', error);
+                    // Auto-advance if play fails
+                    setTimeout(() => this.playNext(), 2000);
+                });
+            }
+
+            playNext() {
+                if (!this.isPlaying) return;
+                
+                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                this.playCurrentTrack();
+            }
+        }
+
+        // Initialize radio when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.radioStation = new RadioStation();
+        });
+    </script>
+</body>
+</html>
