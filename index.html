@@ -74,6 +74,12 @@
             background: #dc2626;
         }
 
+        .play-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .now-playing {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 15px;
@@ -99,6 +105,11 @@
             opacity: 0.8;
             font-size: 0.9rem;
             margin-top: 1rem;
+        }
+
+        .loading {
+            opacity: 0.7;
+            font-style: italic;
         }
 
         audio {
@@ -136,7 +147,7 @@
         </div>
 
         <div class="radio-player">
-            <button id="playButton" class="play-button">▶️ Start Radio</button>
+            <button id="playButton" class="play-button" disabled>⏳ Loading Playlist...</button>
             
             <div id="nowPlaying" class="now-playing" style="display: none;">
                 <div class="track-info">
@@ -160,43 +171,40 @@
             constructor() {
                 this.isPlaying = false;
                 this.currentTrackIndex = 0;
+                this.playlist = [];
                 this.audio = document.getElementById('audioPlayer');
                 this.playButton = document.getElementById('playButton');
                 this.nowPlaying = document.getElementById('nowPlaying');
                 this.trackTitle = document.getElementById('trackTitle');
                 this.trackType = document.getElementById('trackType');
                 this.nextTrack = document.getElementById('nextTrack');
-                
-                // Your radio playlist - UPDATE THESE WITH YOUR ACTUAL FILES
-                this.playlist = [
-                    {
-                        type: 'song',
-                        title: 'First Song - Artist Name',
-                        file: 'music/song1.mp3',
-                        duration: 180
-                    },
-                    {
-                        type: 'voice',
-                        title: 'AI Host: Welcome to the station!',
-                        file: 'voiceovers/welcome.mp3',
-                        duration: 10
-                    },
-                    {
-                        type: 'song',
-                        title: 'Second Song - Another Artist',
-                        file: 'music/song2.mp3', 
-                        duration: 240
-                    },
-                    {
-                        type: 'voice',
-                        title: 'AI Host: That was great! More coming up...',
-                        file: 'voiceovers/transition1.mp3',
-                        duration: 8
-                    }
-                    // Add more tracks here as you get them
-                ];
 
-                this.setupEventListeners();
+                this.loadPlaylist();
+            }
+
+            async loadPlaylist() {
+                try {
+                    this.playButton.textContent = '⏳ Loading Playlist...';
+                    
+                    const response = await fetch('playlist.json');
+                    if (!response.ok) {
+                        throw new Error('Failed to load playlist');
+                    }
+                    
+                    const data = await response.json();
+                    this.playlist = data.playlist;
+                    
+                    this.playButton.textContent = '▶️ Start Radio';
+                    this.playButton.disabled = false;
+                    
+                    this.setupEventListeners();
+                    console.log('Playlist loaded successfully!', this.playlist);
+                    
+                } catch (error) {
+                    console.error('Error loading playlist:', error);
+                    this.playButton.textContent = '❌ Failed to Load';
+                    this.playButton.style.backgroundColor = '#ef4444';
+                }
             }
 
             setupEventListeners() {
@@ -216,6 +224,11 @@
             }
 
             startRadio() {
+                if (this.playlist.length === 0) {
+                    alert('Playlist not loaded yet!');
+                    return;
+                }
+                
                 this.isPlaying = true;
                 this.playButton.textContent = '⏸️ Stop Radio';
                 this.playButton.classList.add('stop');
