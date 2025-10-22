@@ -11,7 +11,7 @@
       "type": "voice",
       "title": "SONG INTRODUCTION",
       "file": "voiceovers/intro1.mp3",
-      "duration": 4,
+      "duration": 3,
       "dj": "Next up, Superfast Pufferfish by Synth Apes"
     },
     {
@@ -32,7 +32,7 @@
       "type": "voice",
       "title": "NEXT SONG INTRO",
       "file": "voiceovers/intro2.mp3",
-      "duration": 4,
+      "duration": 3,
       "dj": "Coming up next, Watermelon Smoothie by Jade Brook"
     },
     {
