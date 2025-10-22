@@ -49,37 +49,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .play-button {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 1rem 0;
-        }
-
-        .play-button:hover {
-            background: #059669;
-            transform: scale(1.05);
-        }
-
-        .play-button.stop {
-            background: #ef4444;
-        }
-
-        .play-button.stop:hover {
-            background: #dc2626;
-        }
-
-        .play-button:disabled {
-            background: #6b7280;
-            cursor: not-allowed;
-            transform: none;
-        }
-
         .now-playing {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 15px;
@@ -159,6 +128,11 @@
             margin-top: 0.5rem;
         }
 
+        .loading {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 10px;
@@ -182,12 +156,10 @@
         </div>
 
         <div class="radio-player">
-            <button id="playButton" class="play-button" disabled>⏳ Loading Broadcast...</button>
-            
-            <div id="nowPlaying" class="now-playing" style="display: none;">
+            <div id="nowPlaying" class="now-playing">
                 <div class="track-info">
-                    <span id="trackType" class="track-type">🎵</span>
-                    <strong id="trackTitle">Track Title</strong>
+                    <span id="trackType" class="track-type">⏳</span>
+                    <strong id="trackTitle" class="loading">Syncing to broadcast...</strong>
                 </div>
                 
                 <div class="progress-container">
@@ -204,9 +176,9 @@
                 </div>
                 
                 <div class="up-next">
-                    Next: <span id="nextTrack">Loading...</span>
+                    Next: <span id="nextTrack" class="loading">syncing...</span>
                 </div>
-                <div class="sync-status" id="syncStatus">🔴 Connecting to broadcast...</div>
+                <div class="sync-status" id="syncStatus">🟡 Connecting to broadcast...</div>
             </div>
 
             <div class="listeners">
@@ -218,16 +190,12 @@
     <script>
         class SyncedRadioStation {
             constructor() {
-                this.isPlaying = false;
-                this.currentTrackIndex = 0;
                 this.playlist = [];
-                this.startTime = null;
-                this.currentTrackStartTime = null;
+                this.currentTrackIndex = 0;
+                this.trackStartTime = null;
                 this.syncInterval = null;
                 
                 this.audio = document.getElementById('audioPlayer');
-                this.playButton = document.getElementById('playButton');
-                this.nowPlaying = document.getElementById('nowPlaying');
                 this.trackTitle = document.getElementById('trackTitle');
                 this.trackType = document.getElementById('trackType');
                 this.nextTrack = document.getElementById('nextTrack');
@@ -236,102 +204,48 @@
                 this.totalTime = document.getElementById('totalTime');
                 this.syncStatus = document.getElementById('syncStatus');
 
-                // Disable audio controls to prevent manual changes
+                // Disable audio controls
                 this.audio.controls = false;
                 
-                this.loadPlaylist();
+                this.initializeStation();
             }
 
-            async loadPlaylist() {
+            async initializeStation() {
                 try {
-                    this.playButton.textContent = '⏳ Loading Broadcast...';
+                    // Load playlist
+                    const playlistResponse = await fetch('playlist.json');
+                    this.playlist = (await playlistResponse.json()).playlist;
                     
-                    const response = await fetch('playlist.json');
-                    if (!response.ok) {
-                        throw new Error('Failed to load playlist');
-                    }
-                    
-                    const data = await response.json();
-                    this.playlist = data.playlist;
-                    
-                    this.playButton.textContent = '▶️ Start Listening';
-                    this.playButton.disabled = false;
-                    
-                    this.setupEventListeners();
-                    console.log('Playlist loaded successfully!');
+                    // Start sync system
+                    this.startSyncSystem();
                     
                 } catch (error) {
-                    console.error('Error loading playlist:', error);
-                    this.playButton.textContent = '❌ Failed to Load';
-                    this.playButton.style.backgroundColor = '#ef4444';
+                    console.error('Error initializing station:', error);
+                    this.syncStatus.textContent = '🔴 Failed to load broadcast';
+                    this.trackTitle.textContent = 'Broadcast offline';
                 }
             }
 
-            setupEventListeners() {
-                this.playButton.addEventListener('click', () => this.toggleRadio());
+            startSyncSystem() {
+                // Calculate track based on current time (ensures sync for all users)
+                const now = new Date();
+                const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+                const segmentDuration = 5; // Change track every 5 minutes
                 
-                // Prevent any manual seeking or playback changes
-                this.audio.addEventListener('seeked', (e) => {
-                    e.preventDefault();
-                    this.syncToBroadcast();
-                });
+                this.currentTrackIndex = Math.floor(minutesSinceMidnight / segmentDuration) % this.playlist.length;
+                this.trackStartTime = new Date();
+                this.trackStartTime.setMinutes(Math.floor(minutesSinceMidnight / segmentDuration) * segmentDuration, 0, 0);
                 
-                this.audio.addEventListener('play', (e) => {
-                    if (!this.isPlaying) {
-                        e.preventDefault();
-                        this.audio.pause();
-                    }
-                });
-                
-                this.audio.addEventListener('pause', (e) => {
-                    if (this.isPlaying) {
-                        e.preventDefault();
-                        this.audio.play();
-                    }
-                });
-            }
-
-            toggleRadio() {
-                if (this.isPlaying) {
-                    this.stopRadio();
-                } else {
-                    this.startRadio();
-                }
-            }
-
-            startRadio() {
-                if (this.playlist.length === 0) {
-                    alert('Playlist not loaded yet!');
-                    return;
-                }
-                
-                this.isPlaying = true;
-                this.startTime = Date.now();
-                this.playButton.textContent = '⏸️ Stop Listening';
-                this.playButton.classList.add('stop');
-                this.nowPlaying.style.display = 'block';
-                this.syncStatus.textContent = '🟢 Synced to live broadcast';
-                
-                this.startSyncInterval();
                 this.playCurrentTrack();
-            }
-
-            stopRadio() {
-                this.isPlaying = false;
-                this.playButton.textContent = '▶️ Start Listening';
-                this.playButton.classList.remove('stop');
-                this.audio.pause();
-                this.audio.currentTime = 0;
-                this.syncStatus.textContent = '🔴 Broadcast paused';
+                this.startProgressUpdates();
                 
-                if (this.syncInterval) {
-                    clearInterval(this.syncInterval);
-                }
+                this.syncStatus.textContent = '🟢 Live - Synced to broadcast';
             }
 
             playCurrentTrack() {
                 const track = this.playlist[this.currentTrackIndex];
-                const nextTrack = this.playlist[(this.currentTrackIndex + 1) % this.playlist.length];
+                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                const nextTrack = this.playlist[nextTrackIndex];
                 
                 // Update UI
                 this.trackTitle.textContent = track.title;
@@ -339,25 +253,20 @@
                 this.nextTrack.textContent = nextTrack.title;
                 this.totalTime.textContent = this.formatTime(track.duration);
                 
-                this.currentTrackStartTime = Date.now();
-                
-                // Play audio
+                // Auto-play the track
                 this.audio.src = track.file;
                 this.audio.play().catch(error => {
-                    console.log('Audio play failed:', error);
-                    // Auto-advance if play fails
-                    setTimeout(() => this.playNext(), 2000);
+                    console.log('Autoplay blocked:', error);
+                    // Show play button if autoplay is blocked
+                    this.showAutoplayMessage();
                 });
             }
 
-            playNext() {
-                if (!this.isPlaying) return;
-                
-                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                this.playCurrentTrack();
+            showAutoplayMessage() {
+                this.syncStatus.innerHTML = '🔴 Autoplay blocked. <button onclick="window.radioStation.audio.play()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Click to Play</button>';
             }
 
-            startSyncInterval() {
+            startProgressUpdates() {
                 this.syncInterval = setInterval(() => {
                     this.updateProgress();
                     this.checkTrackAdvancement();
@@ -365,31 +274,42 @@
             }
 
             updateProgress() {
-                if (!this.currentTrackStartTime) return;
+                if (!this.trackStartTime) return;
                 
                 const track = this.playlist[this.currentTrackIndex];
-                const elapsed = (Date.now() - this.currentTrackStartTime) / 1000;
+                const now = new Date();
+                const elapsed = (now - this.trackStartTime) / 1000;
                 const progress = Math.min((elapsed / track.duration) * 100, 100);
                 
                 this.progressBar.style.width = `${progress}%`;
                 this.currentTime.textContent = this.formatTime(elapsed);
+                
+                // Keep audio in sync
+                if (Math.abs(this.audio.currentTime - elapsed) > 2) {
+                    this.audio.currentTime = elapsed;
+                }
             }
 
             checkTrackAdvancement() {
                 const track = this.playlist[this.currentTrackIndex];
-                const elapsed = (Date.now() - this.currentTrackStartTime) / 1000;
+                const now = new Date();
+                const elapsed = (now - this.trackStartTime) / 1000;
                 
                 if (elapsed >= track.duration) {
-                    this.playNext();
+                    this.advanceToNextTrack();
                 }
             }
 
-            syncToBroadcast() {
-                // Force sync back to correct position
-                if (this.currentTrackStartTime) {
-                    const elapsed = (Date.now() - this.currentTrackStartTime) / 1000;
-                    this.audio.currentTime = Math.min(elapsed, this.audio.duration || 0);
-                }
+            advanceToNextTrack() {
+                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                const now = new Date();
+                const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+                const segmentDuration = 5;
+                
+                this.trackStartTime = new Date();
+                this.trackStartTime.setMinutes(Math.floor(minutesSinceMidnight / segmentDuration) * segmentDuration, 0, 0);
+                
+                this.playCurrentTrack();
             }
 
             formatTime(seconds) {
@@ -404,9 +324,9 @@
             window.radioStation = new SyncedRadioStation();
         });
 
-        // Additional protection against manual controls
+        // Prevent any user interaction with audio
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && e.target.tagName !== 'BUTTON') {
+            if (e.code === 'Space') {
                 e.preventDefault();
             }
         });
