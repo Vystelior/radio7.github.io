@@ -192,10 +192,9 @@
             constructor() {
                 this.playlist = [];
                 this.currentTrackIndex = 0;
-                this.globalStartTime = null;
-                this.syncInterval = null;
-                this.serverTimeOffset = 0;
-                this.trackDurations = {}; // Cache for track durations
+                this.isPlaying = false;
+                this.trackDurations = [];
+                this.totalPlaylistDuration = 0;
                 
                 this.audio = document.getElementById('audioPlayer');
                 this.trackTitle = document.getElementById('trackTitle');
@@ -222,6 +221,10 @@
                     this.handleAudioError();
                 });
                 
+                this.audio.addEventListener('timeupdate', () => {
+                    this.updateUI();
+                });
+                
                 this.initializeStation();
             }
 
@@ -232,188 +235,154 @@
                     const data = await playlistResponse.json();
                     this.playlist = data.playlist;
                     
-                    // Sync with server time
-                    await this.syncWithServer();
+                    this.syncStatus.textContent = '🟢 Loaded playlist';
                     
-                    // Calculate global start time (fixed point in time that all users sync to)
-                    this.calculateGlobalStartTime();
-                    
-                    // Start playback
-                    this.startPlayback();
+                    // Start playback with first track
+                    this.loadCurrentTrack();
                     
                 } catch (error) {
                     console.error('Error initializing station:', error);
-                    this.syncStatus.textContent = '🔴 Broadcast offline - Using local time';
-                    this.startLocalPlayback();
+                    this.syncStatus.textContent = '🔴 Failed to load playlist';
+                    // Use fallback playlist
+                    this.useFallbackPlaylist();
                 }
             }
 
-            async syncWithServer() {
-                try {
-                    // Get server time to calculate offset
-                    const startTime = Date.now();
-                    const response = await fetch('/api/sync');
-                    const data = await response.json();
-                    const endTime = Date.now();
-                    
-                    // Calculate round-trip time and server time offset
-                    const rtt = endTime - startTime;
-                    const estimatedServerTime = data.serverTime + (rtt / 2);
-                    this.serverTimeOffset = estimatedServerTime - endTime;
-                    
-                    this.syncStatus.textContent = '🟢 Synced with server';
-                } catch (error) {
-                    console.warn('Server sync failed, using local time:', error);
-                    this.serverTimeOffset = 0;
-                    this.syncStatus.textContent = '🟡 Using local time - Server unavailable';
-                }
-            }
-
-            calculateGlobalStartTime() {
-                // All users start from the same fixed time (e.g., beginning of current hour)
-                const now = Date.now() + this.serverTimeOffset;
-                const startOfHour = Math.floor(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
-                this.globalStartTime = startOfHour;
-            }
-
-            startPlayback() {
-                // Start with the first track
+            useFallbackPlaylist() {
+                // Fallback playlist in case the JSON fails to load
+                this.playlist = [
+                    {
+                        "type": "voice",
+                        "title": "WELCOME TO RADIO 7",
+                        "file": "voiceovers/welcome.mp3",
+                        "dj": "Welcome to Radio 7, thanks for tuning in!"
+                    },
+                    {
+                        "type": "voice",
+                        "title": "SONG INTRODUCTION",
+                        "file": "voiceovers/intro1.mp3", 
+                        "dj": "Next up, Superfast Pufferfish by Synth Apes"
+                    },
+                    {
+                        "type": "song",
+                        "title": "Superfast Pufferfish - Synth Apes",
+                        "file": "music/SuperfastPufferfish.mp3",
+                        "dj": "Now playing: Superfast Pufferfish by Synth Apes"
+                    },
+                    {
+                        "type": "voice",
+                        "title": "SONG RECAP",
+                        "file": "voiceovers/recap1.mp3",
+                        "dj": "That was Superfast Pufferfish by Synth Apes"
+                    },
+                    {
+                        "type": "voice", 
+                        "title": "NEXT SONG INTRO",
+                        "file": "voiceovers/intro2.mp3",
+                        "dj": "Coming up next, Watermelon Smoothie by Jade Brook"
+                    },
+                    {
+                        "type": "song",
+                        "title": "Watermelon Smoothie - Jade Brook", 
+                        "file": "music/WatermelonSmoothie.mp3",
+                        "dj": "Now playing: Watermelon Smoothie by Jade Brook"
+                    },
+                    {
+                        "type": "voice",
+                        "title": "SONG RECAP", 
+                        "file": "voiceovers/recap2.mp3",
+                        "dj": "You just heard Watermelon Smoothie by Jade Brook"
+                    }
+                ];
+                
                 this.loadCurrentTrack();
-                this.startProgressUpdates();
-            }
-
-            startLocalPlayback() {
-                // Fallback: use local time if server sync fails
-                this.globalStartTime = Date.now();
-                this.loadCurrentTrack();
-                this.startProgressUpdates();
             }
 
             async loadCurrentTrack() {
+                if (this.playlist.length === 0) return;
+                
                 const track = this.playlist[this.currentTrackIndex];
                 const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
                 const nextTrack = this.playlist[nextTrackIndex];
                 
+                // Update UI
                 this.trackTitle.textContent = track.title;
                 this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
                 this.nextTrack.textContent = nextTrack.title;
+                this.totalTime.textContent = '0:00';
+                this.currentTime.textContent = '0:00';
+                this.progressBar.style.width = '0%';
                 
-                // Only change audio source if it's different
-                if (this.audio.src !== window.location.origin + '/' + track.file) {
+                console.log('Loading track:', track.title, 'File:', track.file);
+                
+                // Load and play the audio
+                try {
                     this.audio.src = track.file;
+                    this.audio.preload = 'auto';
                     
-                    // Preload the next track
-                    this.preloadNextTrack();
+                    // Wait for the audio to be ready
+                    await new Promise((resolve, reject) => {
+                        const onCanPlay = () => {
+                            this.audio.removeEventListener('canplay', onCanPlay);
+                            this.audio.removeEventListener('error', onError);
+                            resolve();
+                        };
+                        
+                        const onError = (e) => {
+                            this.audio.removeEventListener('canplay', onCanPlay);
+                            this.audio.removeEventListener('error', onError);
+                            reject(e);
+                        };
+                        
+                        this.audio.addEventListener('canplay', onCanPlay);
+                        this.audio.addEventListener('error', onError);
+                    });
                     
-                    // Play the current track
-                    try {
-                        await this.audio.play();
-                        this.syncStatus.textContent = '🟢 Live - Server Synced';
-                    } catch (error) {
-                        console.log('Autoplay blocked:', error);
-                        this.showAutoplayMessage();
-                    }
+                    // Play the audio
+                    await this.audio.play();
+                    this.isPlaying = true;
+                    this.syncStatus.textContent = '🟢 Live - Playing';
+                    
+                } catch (error) {
+                    console.error('Error playing audio:', error);
+                    this.handleAudioError();
                 }
-            }
-            
-            preloadNextTrack() {
-                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                const nextTrack = this.playlist[nextTrackIndex];
-                
-                // Create a hidden audio element to preload the next track
-                if (!this.preloadAudio) {
-                    this.preloadAudio = new Audio();
-                    this.preloadAudio.preload = 'auto';
-                }
-                
-                this.preloadAudio.src = nextTrack.file;
             }
 
             onTrackLoaded() {
-                // Update total time display
-                this.totalTime.textContent = this.formatTime(this.audio.duration);
-                
-                // Cache the duration for this track
-                const track = this.playlist[this.currentTrackIndex];
-                this.trackDurations[track.file] = this.audio.duration;
-                
-                // Set the correct playback position based on global time
-                this.setPlaybackPosition();
+                // Update total time display when duration is known
+                if (this.audio.duration && isFinite(this.audio.duration)) {
+                    this.totalTime.textContent = this.formatTime(this.audio.duration);
+                    console.log('Track duration:', this.audio.duration);
+                }
             }
             
-            setPlaybackPosition() {
-                const track = this.playlist[this.currentTrackIndex];
-                const trackDuration = this.trackDurations[track.file] || this.audio.duration;
-                
-                if (!trackDuration) return;
-                
-                // Calculate the correct position in the current track
-                const totalElapsed = this.getCurrentPlaybackPosition();
-                let accumulatedTime = 0;
-                
-                // Find which track we should be playing and the position within it
-                for (let i = 0; i < this.currentTrackIndex; i++) {
-                    const prevTrack = this.playlist[i];
-                    const prevDuration = this.trackDurations[prevTrack.file];
-                    if (prevDuration) {
-                        accumulatedTime += prevDuration;
-                    }
-                }
-                
-                const trackElapsed = totalElapsed - accumulatedTime;
-                
-                // If we're significantly off, adjust the position
-                if (Math.abs(this.audio.currentTime - trackElapsed) > 1) {
-                    this.audio.currentTime = Math.max(0, Math.min(trackElapsed, trackDuration - 0.5));
-                }
-            }
-
             onTrackEnded() {
-                // Move to next track when current one ends
+                console.log('Track ended, moving to next track');
+                // Move to next track when current one ends naturally
                 this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
                 this.loadCurrentTrack();
             }
 
             handleAudioError() {
-                console.error('Error loading audio track');
+                console.error('Error loading audio track:', this.audio.error);
                 
-                // Try to skip to next track after a short delay
+                // Skip to next track after a short delay
                 setTimeout(() => {
+                    console.log('Skipping to next track due to error');
                     this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
                     this.loadCurrentTrack();
                 }, 2000);
-            }
-
-            getCurrentPlaybackPosition() {
-                const now = Date.now() + this.serverTimeOffset;
-                const elapsed = (now - this.globalStartTime) / 1000; // Convert to seconds
-                return Math.max(0, elapsed);
-            }
-
-            startProgressUpdates() {
-                this.syncInterval = setInterval(() => {
-                    this.updateUI();
-                }, 1000);
+                
+                this.syncStatus.textContent = '🟡 Skipping to next track...';
             }
 
             updateUI() {
-                const track = this.playlist[this.currentTrackIndex];
-                const trackDuration = this.trackDurations[track.file] || this.audio.duration;
-                
-                if (trackDuration && this.audio.duration) {
-                    const progress = Math.min((this.audio.currentTime / trackDuration) * 100, 100);
-                    this.progressBar.style.width = `${progress}%`;
+                if (this.audio.duration && isFinite(this.audio.duration)) {
+                    const progress = (this.audio.currentTime / this.audio.duration) * 100;
+                    this.progressBar.style.width = `${Math.min(progress, 100)}%`;
                     this.currentTime.textContent = this.formatTime(this.audio.currentTime);
                 }
-            }
-
-            showAutoplayMessage() {
-                this.syncStatus.innerHTML = '🔴 Autoplay blocked. <button onclick="window.radioStation.resumePlayback()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Click to Play</button>';
-            }
-
-            resumePlayback() {
-                this.audio.play().catch(console.error);
-                this.syncStatus.textContent = '🟢 Live - Server Synced';
             }
 
             formatTime(seconds) {
@@ -421,6 +390,25 @@
                 const mins = Math.floor(seconds / 60);
                 const secs = Math.floor(seconds % 60);
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            // Manual control methods for debugging
+            playPause() {
+                if (this.audio.paused) {
+                    this.audio.play();
+                } else {
+                    this.audio.pause();
+                }
+            }
+            
+            nextTrack() {
+                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                this.loadCurrentTrack();
+            }
+            
+            previousTrack() {
+                this.currentTrackIndex = (this.currentTrackIndex - 1 + this.playlist.length) % this.playlist.length;
+                this.loadCurrentTrack();
             }
         }
 
@@ -433,6 +421,18 @@
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
+            }
+        });
+        
+        // Add some debug controls (remove in production)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowRight') {
+                window.radioStation.nextTrack();
+            } else if (e.code === 'ArrowLeft') {
+                window.radioStation.previousTrack();
+            } else if (e.code === 'Space') {
+                e.preventDefault();
+                window.radioStation.playPause();
             }
         });
     </script>
