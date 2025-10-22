@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Radio 7 - Live Synced Broadcast</title>
+    <title>🎵 Radio 7 - Live HLS Broadcast</title>
     <style>
         * {
             margin: 0;
@@ -56,6 +56,36 @@
             margin: 1.5rem 0;
         }
 
+        .station-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 1.5rem;
+        }
+
+        .station-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #10b981, #3b82f6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .station-text h2 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .station-text p {
+            opacity: 0.8;
+            font-size: 1rem;
+        }
+
         .track-info {
             font-size: 1.3rem;
             margin-bottom: 1rem;
@@ -70,50 +100,68 @@
             margin-right: 10px;
         }
 
-        .up-next {
-            opacity: 0.8;
-            font-size: 0.9rem;
-            margin-top: 1rem;
-        }
-
-        .progress-container {
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            margin: 1rem 0;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: #10b981;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        .time-display {
+        .controls {
             display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            opacity: 0.7;
-            margin-top: 0.5rem;
+            justify-content: center;
+            gap: 15px;
+            margin: 1.5rem 0;
         }
 
-        .audio-container {
-            position: relative;
-            margin-top: 1rem;
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
         }
 
-        .audio-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            cursor: not-allowed;
-            z-index: 2;
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .control-btn.play {
+            background: #10b981;
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
+        }
+
+        .control-btn.play:hover {
+            background: #0da271;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 1rem 0;
+        }
+
+        .volume-control input {
+            width: 150px;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-control input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
         }
 
         .listeners {
@@ -133,6 +181,37 @@
             font-style: italic;
         }
 
+        .playlist-info {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .playlist-item.current {
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        .playlist-item .type-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .playlist-item.song .type-indicator {
+            background: #3b82f6;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 10px;
@@ -145,6 +224,23 @@
             .radio-player {
                 padding: 1.5rem;
             }
+            
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+            
+            .control-btn.play {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+            
+            .station-info {
+                flex-direction: column;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -152,288 +248,273 @@
     <div class="container">
         <div class="header">
             <h1>🎵 Radio 7</h1>
-            <p>Live Synced Broadcast - Everyone Hears the Same Thing</p>
+            <p>Live HLS Stream - Continuous Broadcast</p>
         </div>
 
         <div class="radio-player">
             <div id="nowPlaying" class="now-playing">
+                <div class="station-info">
+                    <div class="station-logo">R7</div>
+                    <div class="station-text">
+                        <h2>Radio 7</h2>
+                        <p>Your Continuous Music Station</p>
+                    </div>
+                </div>
+                
                 <div class="track-info">
-                    <span id="trackType" class="track-type">⏳</span>
-                    <strong id="trackTitle" class="loading">Syncing to broadcast...</strong>
+                    <span id="trackType" class="track-type">📻</span>
+                    <strong id="trackTitle">Ready to Stream</strong>
                 </div>
                 
-                <div class="progress-container">
-                    <div id="progressBar" class="progress-bar" style="width: 0%"></div>
-                </div>
-                <div class="time-display">
-                    <span id="currentTime">0:00</span>
-                    <span id="totalTime">0:00</span>
+                <div class="controls">
+                    <button class="control-btn play" id="playBtn">▶</button>
+                    <button class="control-btn" id="stopBtn">⏹</button>
                 </div>
                 
-                <div class="audio-container">
-                    <div class="audio-overlay" title="Live broadcast - playback is controlled by the station"></div>
-                    <audio id="audioPlayer"></audio>
+                <div class="volume-control">
+                    <span>🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.7">
                 </div>
                 
-                <div class="up-next">
-                    Next: <span id="nextTrack" class="loading">syncing...</span>
+                <div class="sync-status" id="syncStatus">Click play to start streaming</div>
+                
+                <div class="playlist-info">
+                    <div class="playlist-item current">
+                        <div class="type-indicator"></div>
+                        <span>WELCOME TO RADIO 7</span>
+                    </div>
+                    <div class="playlist-item song">
+                        <div class="type-indicator"></div>
+                        <span>Superfast Pufferfish - Synth Apes</span>
+                    </div>
+                    <div class="playlist-item">
+                        <div class="type-indicator"></div>
+                        <span>Watermelon Smoothie - Jade Brook</span>
+                    </div>
                 </div>
-                <div class="sync-status" id="syncStatus">🟡 Connecting to broadcast server...</div>
             </div>
 
             <div class="listeners">
-                📻 Live Broadcast - Server Synced
+                📻 Live HLS Stream - Continuous Broadcast
             </div>
         </div>
     </div>
 
+    <!-- Include HLS.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
     <script>
-        class SyncedRadioStation {
+        class Radio7HLSPlayer {
             constructor() {
-                this.playlist = [];
-                this.currentTrackIndex = 0;
+                this.hls = null;
                 this.isPlaying = false;
-                this.trackDurations = [];
-                this.totalPlaylistDuration = 0;
+                // Replace this URL with your actual Radio 7 HLS stream
+                this.radio7Stream = "https://your-radio7-stream-url/stream.m3u8";
                 
-                this.audio = document.getElementById('audioPlayer');
+                this.audio = document.getElementById('audioPlayer') || this.createAudioElement();
+                this.playBtn = document.getElementById('playBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.volumeSlider = document.getElementById('volumeSlider');
                 this.trackTitle = document.getElementById('trackTitle');
                 this.trackType = document.getElementById('trackType');
-                this.nextTrack = document.getElementById('nextTrack');
-                this.progressBar = document.getElementById('progressBar');
-                this.currentTime = document.getElementById('currentTime');
-                this.totalTime = document.getElementById('totalTime');
                 this.syncStatus = document.getElementById('syncStatus');
+                
+                this.initializePlayer();
+            }
 
-                this.audio.controls = false;
-                
+            createAudioElement() {
+                const audio = document.createElement('audio');
+                audio.style.display = 'none';
+                document.body.appendChild(audio);
+                return audio;
+            }
+
+            initializePlayer() {
+                // Event listeners
+                this.playBtn.addEventListener('click', () => {
+                    this.togglePlayback();
+                });
+
+                this.stopBtn.addEventListener('click', () => {
+                    this.stopPlayback();
+                });
+
+                this.volumeSlider.addEventListener('input', () => {
+                    this.audio.volume = this.volumeSlider.value;
+                });
+
                 // Audio event listeners
-                this.audio.addEventListener('loadedmetadata', () => {
-                    this.onTrackLoaded();
+                this.audio.addEventListener('waiting', () => {
+                    this.syncStatus.textContent = '🟡 Buffering stream...';
+                    this.trackTitle.textContent = 'Radio 7 - Buffering';
                 });
-                
-                this.audio.addEventListener('ended', () => {
-                    this.onTrackEnded();
+
+                this.audio.addEventListener('playing', () => {
+                    this.syncStatus.textContent = '🟢 Live - Connected to Radio 7';
+                    this.trackTitle.textContent = 'Radio 7 - Live Broadcast';
+                    this.trackType.textContent = '📻 LIVE';
                 });
-                
+
                 this.audio.addEventListener('error', (e) => {
                     console.error('Audio error:', e);
-                    this.handleAudioError();
+                    this.handleError('Failed to connect to Radio 7 stream');
                 });
+
+                // Set initial volume
+                this.audio.volume = this.volumeSlider.value;
                 
-                this.audio.addEventListener('timeupdate', () => {
-                    this.updateUI();
-                });
-                
-                this.initializeStation();
+                // Simulate now playing updates
+                this.startNowPlayingUpdates();
             }
 
-            async initializeStation() {
-                try {
-                    // Load playlist first
-                    const playlistResponse = await fetch('playlist.json');
-                    const data = await playlistResponse.json();
-                    this.playlist = data.playlist;
-                    
-                    this.syncStatus.textContent = '🟢 Loaded playlist';
-                    
-                    // Start playback with first track
-                    this.loadCurrentTrack();
-                    
-                } catch (error) {
-                    console.error('Error initializing station:', error);
-                    this.syncStatus.textContent = '🔴 Failed to load playlist';
-                    // Use fallback playlist
-                    this.useFallbackPlaylist();
+            togglePlayback() {
+                if (this.isPlaying) {
+                    this.pausePlayback();
+                } else {
+                    this.startPlayback();
                 }
             }
 
-            useFallbackPlaylist() {
-                // Fallback playlist in case the JSON fails to load
-                this.playlist = [
-                    {
-                        "type": "voice",
-                        "title": "WELCOME TO RADIO 7",
-                        "file": "voiceovers/welcome.mp3",
-                        "dj": "Welcome to Radio 7, thanks for tuning in!"
-                    },
-                    {
-                        "type": "voice",
-                        "title": "SONG INTRODUCTION",
-                        "file": "voiceovers/intro1.mp3", 
-                        "dj": "Next up, Superfast Pufferfish by Synth Apes"
-                    },
-                    {
-                        "type": "song",
-                        "title": "Superfast Pufferfish - Synth Apes",
-                        "file": "music/SuperfastPufferfish.mp3",
-                        "dj": "Now playing: Superfast Pufferfish by Synth Apes"
-                    },
-                    {
-                        "type": "voice",
-                        "title": "SONG RECAP",
-                        "file": "voiceovers/recap1.mp3",
-                        "dj": "That was Superfast Pufferfish by Synth Apes"
-                    },
-                    {
-                        "type": "voice", 
-                        "title": "NEXT SONG INTRO",
-                        "file": "voiceovers/intro2.mp3",
-                        "dj": "Coming up next, Watermelon Smoothie by Jade Brook"
-                    },
-                    {
-                        "type": "song",
-                        "title": "Watermelon Smoothie - Jade Brook", 
-                        "file": "music/WatermelonSmoothie.mp3",
-                        "dj": "Now playing: Watermelon Smoothie by Jade Brook"
-                    },
-                    {
-                        "type": "voice",
-                        "title": "SONG RECAP", 
-                        "file": "voiceovers/recap2.mp3",
-                        "dj": "You just heard Watermelon Smoothie by Jade Brook"
+            startPlayback() {
+                this.syncStatus.textContent = '🟡 Connecting to Radio 7...';
+
+                // Check if HLS.js is supported
+                if (Hls.isSupported()) {
+                    this.setupHLS();
+                } else if (this.audio.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Native HLS support (Safari)
+                    this.setupNativeHLS();
+                } else {
+                    this.handleError('HLS not supported in this browser');
+                    return;
+                }
+
+                this.playBtn.innerHTML = '⏸';
+                this.isPlaying = true;
+            }
+
+            setupHLS() {
+                // Clean up previous HLS instance
+                if (this.hls) {
+                    this.hls.destroy();
+                }
+
+                this.hls = new Hls({
+                    enableWorker: false,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+
+                this.hls.loadSource(this.radio7Stream);
+                this.hls.attachMedia(this.audio);
+
+                this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    this.audio.play().catch(error => {
+                        this.handleError('Autoplay blocked: ' + error.message);
+                    });
+                });
+
+                this.hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                this.handleError('Network error - trying to recover');
+                                this.hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                this.handleError('Media error - recovering');
+                                this.hls.recoverMediaError();
+                                break;
+                            default:
+                                this.handleError('Unable to connect to Radio 7');
+                                this.stopPlayback();
+                                break;
+                        }
                     }
+                });
+            }
+
+            setupNativeHLS() {
+                // For Safari and other browsers with native HLS support
+                this.audio.src = this.radio7Stream;
+                this.audio.play().catch(error => {
+                    this.handleError('Autoplay blocked: ' + error.message);
+                });
+            }
+
+            pausePlayback() {
+                this.audio.pause();
+                this.playBtn.innerHTML = '▶';
+                this.isPlaying = false;
+                this.syncStatus.textContent = '⏸ Paused - Radio 7';
+                this.trackTitle.textContent = 'Radio 7 - Paused';
+            }
+
+            stopPlayback() {
+                if (this.hls) {
+                    this.hls.destroy();
+                    this.hls = null;
+                }
+                
+                this.audio.pause();
+                this.audio.src = '';
+                this.playBtn.innerHTML = '▶';
+                this.isPlaying = false;
+                this.syncStatus.textContent = '⏹ Stopped';
+                this.trackTitle.textContent = 'Ready to Stream';
+                this.trackType.textContent = '📻';
+            }
+
+            handleError(message) {
+                console.error('Player error:', message);
+                this.syncStatus.textContent = '🔴 ' + message;
+                this.playBtn.innerHTML = '▶';
+                this.isPlaying = false;
+                this.trackTitle.textContent = 'Connection Error';
+                
+                // Show retry button
+                setTimeout(() => {
+                    if (!this.isPlaying) {
+                        this.syncStatus.innerHTML = '🔴 ' + message + 
+                            ' <button onclick="window.radio7Player.startPlayback()" style="background: #10b981; border: none; color: white; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 0.7rem;">Retry</button>';
+                    }
+                }, 2000);
+            }
+
+            startNowPlayingUpdates() {
+                // Simulate track changes for demo purposes
+                // In a real implementation, this would come from your stream metadata
+                const tracks = [
+                    "WELCOME TO RADIO 7",
+                    "Superfast Pufferfish - Synth Apes", 
+                    "Watermelon Smoothie - Jade Brook",
+                    "AI Host - Coming up next",
+                    "New Release - Artist Spotlight",
+                    "Listener Requests Hour"
                 ];
                 
-                this.loadCurrentTrack();
-            }
-
-            async loadCurrentTrack() {
-                if (this.playlist.length === 0) return;
+                let trackIndex = 0;
                 
-                const track = this.playlist[this.currentTrackIndex];
-                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                const nextTrack = this.playlist[nextTrackIndex];
-                
-                // Update UI
-                this.trackTitle.textContent = track.title;
-                this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
-                this.nextTrack.textContent = nextTrack.title;
-                this.totalTime.textContent = '0:00';
-                this.currentTime.textContent = '0:00';
-                this.progressBar.style.width = '0%';
-                
-                console.log('Loading track:', track.title, 'File:', track.file);
-                
-                // Load and play the audio
-                try {
-                    this.audio.src = track.file;
-                    this.audio.preload = 'auto';
-                    
-                    // Wait for the audio to be ready
-                    await new Promise((resolve, reject) => {
-                        const onCanPlay = () => {
-                            this.audio.removeEventListener('canplay', onCanPlay);
-                            this.audio.removeEventListener('error', onError);
-                            resolve();
-                        };
+                setInterval(() => {
+                    if (this.isPlaying) {
+                        this.trackTitle.textContent = tracks[trackIndex];
+                        trackIndex = (trackIndex + 1) % tracks.length;
                         
-                        const onError = (e) => {
-                            this.audio.removeEventListener('canplay', onCanPlay);
-                            this.audio.removeEventListener('error', onError);
-                            reject(e);
-                        };
-                        
-                        this.audio.addEventListener('canplay', onCanPlay);
-                        this.audio.addEventListener('error', onError);
-                    });
-                    
-                    // Play the audio
-                    await this.audio.play();
-                    this.isPlaying = true;
-                    this.syncStatus.textContent = '🟢 Live - Playing';
-                    
-                } catch (error) {
-                    console.error('Error playing audio:', error);
-                    this.handleAudioError();
-                }
-            }
-
-            onTrackLoaded() {
-                // Update total time display when duration is known
-                if (this.audio.duration && isFinite(this.audio.duration)) {
-                    this.totalTime.textContent = this.formatTime(this.audio.duration);
-                    console.log('Track duration:', this.audio.duration);
-                }
-            }
-            
-            onTrackEnded() {
-                console.log('Track ended, moving to next track');
-                // Move to next track when current one ends naturally
-                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                this.loadCurrentTrack();
-            }
-
-            handleAudioError() {
-                console.error('Error loading audio track:', this.audio.error);
-                
-                // Skip to next track after a short delay
-                setTimeout(() => {
-                    console.log('Skipping to next track due to error');
-                    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                    this.loadCurrentTrack();
-                }, 2000);
-                
-                this.syncStatus.textContent = '🟡 Skipping to next track...';
-            }
-
-            updateUI() {
-                if (this.audio.duration && isFinite(this.audio.duration)) {
-                    const progress = (this.audio.currentTime / this.audio.duration) * 100;
-                    this.progressBar.style.width = `${Math.min(progress, 100)}%`;
-                    this.currentTime.textContent = this.formatTime(this.audio.currentTime);
-                }
-            }
-
-            formatTime(seconds) {
-                if (isNaN(seconds) || seconds < 0) return "0:00";
-                const mins = Math.floor(seconds / 60);
-                const secs = Math.floor(seconds % 60);
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            }
-            
-            // Manual control methods for debugging
-            playPause() {
-                if (this.audio.paused) {
-                    this.audio.play();
-                } else {
-                    this.audio.pause();
-                }
-            }
-            
-            nextTrack() {
-                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                this.loadCurrentTrack();
-            }
-            
-            previousTrack() {
-                this.currentTrackIndex = (this.currentTrackIndex - 1 + this.playlist.length) % this.playlist.length;
-                this.loadCurrentTrack();
+                        // Update playlist highlight
+                        const playlistItems = document.querySelectorAll('.playlist-item');
+                        playlistItems.forEach(item => item.classList.remove('current'));
+                        if (playlistItems[trackIndex % 3]) {
+                            playlistItems[trackIndex % 3].classList.add('current');
+                        }
+                    }
+                }, 15000); // Change every 15 seconds
             }
         }
 
-        // Initialize radio when page loads
+        // Initialize player when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            window.radioStation = new SyncedRadioStation();
-        });
-
-        // Prevent any user interaction with audio
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-            }
-        });
-        
-        // Add some debug controls (remove in production)
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'ArrowRight') {
-                window.radioStation.nextTrack();
-            } else if (e.code === 'ArrowLeft') {
-                window.radioStation.previousTrack();
-            } else if (e.code === 'Space') {
-                e.preventDefault();
-                window.radioStation.playPause();
-            }
+            window.radio7Player = new Radio7HLSPlayer();
         });
     </script>
 </body>
