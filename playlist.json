@@ -4,49 +4,42 @@
       "type": "voice",
       "title": "WELCOME TO RADIO 7",
       "file": "voiceovers/welcome.mp3",
-      "duration": 1,
       "dj": "Welcome to Radio 7, thanks for tuning in!"
     },
     {
       "type": "voice",
       "title": "SONG INTRODUCTION",
       "file": "voiceovers/intro1.mp3",
-      "duration": 3,
       "dj": "Next up, Superfast Pufferfish by Synth Apes"
     },
     {
       "type": "song",
       "title": "Superfast Pufferfish - Synth Apes",
       "file": "music/SuperfastPufferfish.mp3",
-      "duration": 210,
       "dj": "Now playing: Superfast Pufferfish by Synth Apes"
     },
     {
       "type": "voice",
       "title": "SONG RECAP",
       "file": "voiceovers/recap1.mp3",
-      "duration": 3,
       "dj": "That was Superfast Pufferfish by Synth Apes"
     },
     {
       "type": "voice",
       "title": "NEXT SONG INTRO",
       "file": "voiceovers/intro2.mp3",
-      "duration": 3,
       "dj": "Coming up next, Watermelon Smoothie by Jade Brook"
     },
     {
       "type": "song",
       "title": "Watermelon Smoothie - Jade Brook",
       "file": "music/WatermelonSmoothie.mp3",
-      "duration": 155,
       "dj": "Now playing: Watermelon Smoothie by Jade Brook"
     },
     {
       "type": "voice",
       "title": "SONG RECAP",
       "file": "voiceovers/recap2.mp3",
-      "duration": 3,
       "dj": "You just heard Watermelon Smoothie by Jade Brook"
     }
   ]
