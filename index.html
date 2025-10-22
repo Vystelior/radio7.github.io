@@ -195,6 +195,7 @@
                 this.globalStartTime = null;
                 this.syncInterval = null;
                 this.serverTimeOffset = 0;
+                this.trackDurations = {}; // Cache for track durations
                 
                 this.audio = document.getElementById('audioPlayer');
                 this.trackTitle = document.getElementById('trackTitle');
@@ -206,6 +207,20 @@
                 this.syncStatus = document.getElementById('syncStatus');
 
                 this.audio.controls = false;
+                
+                // Audio event listeners
+                this.audio.addEventListener('loadedmetadata', () => {
+                    this.onTrackLoaded();
+                });
+                
+                this.audio.addEventListener('ended', () => {
+                    this.onTrackEnded();
+                });
+                
+                this.audio.addEventListener('error', (e) => {
+                    console.error('Audio error:', e);
+                    this.handleAudioError();
+                });
                 
                 this.initializeStation();
             }
@@ -234,18 +249,24 @@
             }
 
             async syncWithServer() {
-                // Get server time to calculate offset
-                const startTime = Date.now();
-                const response = await fetch('/api/sync');
-                const data = await response.json();
-                const endTime = Date.now();
-                
-                // Calculate round-trip time and server time offset
-                const rtt = endTime - startTime;
-                const estimatedServerTime = data.serverTime + (rtt / 2);
-                this.serverTimeOffset = estimatedServerTime - endTime;
-                
-                this.syncStatus.textContent = '🟢 Synced with server';
+                try {
+                    // Get server time to calculate offset
+                    const startTime = Date.now();
+                    const response = await fetch('/api/sync');
+                    const data = await response.json();
+                    const endTime = Date.now();
+                    
+                    // Calculate round-trip time and server time offset
+                    const rtt = endTime - startTime;
+                    const estimatedServerTime = data.serverTime + (rtt / 2);
+                    this.serverTimeOffset = estimatedServerTime - endTime;
+                    
+                    this.syncStatus.textContent = '🟢 Synced with server';
+                } catch (error) {
+                    console.warn('Server sync failed, using local time:', error);
+                    this.serverTimeOffset = 0;
+                    this.syncStatus.textContent = '🟡 Using local time - Server unavailable';
+                }
             }
 
             calculateGlobalStartTime() {
@@ -256,15 +277,111 @@
             }
 
             startPlayback() {
+                // Start with the first track
+                this.loadCurrentTrack();
                 this.startProgressUpdates();
-                this.updatePlayback();
             }
 
             startLocalPlayback() {
                 // Fallback: use local time if server sync fails
                 this.globalStartTime = Date.now();
+                this.loadCurrentTrack();
                 this.startProgressUpdates();
-                this.updatePlayback();
+            }
+
+            async loadCurrentTrack() {
+                const track = this.playlist[this.currentTrackIndex];
+                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                const nextTrack = this.playlist[nextTrackIndex];
+                
+                this.trackTitle.textContent = track.title;
+                this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
+                this.nextTrack.textContent = nextTrack.title;
+                
+                // Only change audio source if it's different
+                if (this.audio.src !== window.location.origin + '/' + track.file) {
+                    this.audio.src = track.file;
+                    
+                    // Preload the next track
+                    this.preloadNextTrack();
+                    
+                    // Play the current track
+                    try {
+                        await this.audio.play();
+                        this.syncStatus.textContent = '🟢 Live - Server Synced';
+                    } catch (error) {
+                        console.log('Autoplay blocked:', error);
+                        this.showAutoplayMessage();
+                    }
+                }
+            }
+            
+            preloadNextTrack() {
+                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                const nextTrack = this.playlist[nextTrackIndex];
+                
+                // Create a hidden audio element to preload the next track
+                if (!this.preloadAudio) {
+                    this.preloadAudio = new Audio();
+                    this.preloadAudio.preload = 'auto';
+                }
+                
+                this.preloadAudio.src = nextTrack.file;
+            }
+
+            onTrackLoaded() {
+                // Update total time display
+                this.totalTime.textContent = this.formatTime(this.audio.duration);
+                
+                // Cache the duration for this track
+                const track = this.playlist[this.currentTrackIndex];
+                this.trackDurations[track.file] = this.audio.duration;
+                
+                // Set the correct playback position based on global time
+                this.setPlaybackPosition();
+            }
+            
+            setPlaybackPosition() {
+                const track = this.playlist[this.currentTrackIndex];
+                const trackDuration = this.trackDurations[track.file] || this.audio.duration;
+                
+                if (!trackDuration) return;
+                
+                // Calculate the correct position in the current track
+                const totalElapsed = this.getCurrentPlaybackPosition();
+                let accumulatedTime = 0;
+                
+                // Find which track we should be playing and the position within it
+                for (let i = 0; i < this.currentTrackIndex; i++) {
+                    const prevTrack = this.playlist[i];
+                    const prevDuration = this.trackDurations[prevTrack.file];
+                    if (prevDuration) {
+                        accumulatedTime += prevDuration;
+                    }
+                }
+                
+                const trackElapsed = totalElapsed - accumulatedTime;
+                
+                // If we're significantly off, adjust the position
+                if (Math.abs(this.audio.currentTime - trackElapsed) > 1) {
+                    this.audio.currentTime = Math.max(0, Math.min(trackElapsed, trackDuration - 0.5));
+                }
+            }
+
+            onTrackEnded() {
+                // Move to next track when current one ends
+                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                this.loadCurrentTrack();
+            }
+
+            handleAudioError() {
+                console.error('Error loading audio track');
+                
+                // Try to skip to next track after a short delay
+                setTimeout(() => {
+                    this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
+                    this.loadCurrentTrack();
+                }, 2000);
             }
 
             getCurrentPlaybackPosition() {
@@ -273,77 +390,21 @@
                 return Math.max(0, elapsed);
             }
 
-            updatePlayback() {
-                const totalElapsed = this.getCurrentPlaybackPosition();
-                
-                // Calculate which track should be playing based on total elapsed time
-                let accumulatedTime = 0;
-                let trackIndex = 0;
-                let trackElapsed = 0;
-                
-                for (let i = 0; i < this.playlist.length; i++) {
-                    const track = this.playlist[i];
-                    if (totalElapsed < accumulatedTime + track.duration) {
-                        trackIndex = i;
-                        trackElapsed = totalElapsed - accumulatedTime;
-                        break;
-                    }
-                    accumulatedTime += track.duration;
-                    
-                    // Loop back to start if we've gone through entire playlist
-                    if (i === this.playlist.length - 1) {
-                        this.globalStartTime += accumulatedTime * 1000;
-                        return this.updatePlayback(); // Recursive call with adjusted start time
-                    }
-                }
-                
-                // Update current track if changed
-                if (this.currentTrackIndex !== trackIndex) {
-                    this.currentTrackIndex = trackIndex;
-                    this.loadCurrentTrack();
-                }
-                
-                // Update audio position
-                if (this.audio.src && Math.abs(this.audio.currentTime - trackElapsed) > 1) {
-                    this.audio.currentTime = trackElapsed;
-                }
-                
-                // Update UI
-                this.updateUI(trackElapsed);
-            }
-
-            loadCurrentTrack() {
-                const track = this.playlist[this.currentTrackIndex];
-                const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                const nextTrack = this.playlist[nextTrackIndex];
-                
-                this.trackTitle.textContent = track.title;
-                this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
-                this.nextTrack.textContent = nextTrack.title;
-                this.totalTime.textContent = this.formatTime(track.duration);
-                
-                // Only change audio source if it's different
-                if (this.audio.src !== window.location.origin + '/' + track.file) {
-                    this.audio.src = track.file;
-                    this.audio.play().catch(error => {
-                        console.log('Autoplay blocked:', error);
-                        this.showAutoplayMessage();
-                    });
-                }
-            }
-
-            updateUI(trackElapsed) {
-                const track = this.playlist[this.currentTrackIndex];
-                const progress = Math.min((trackElapsed / track.duration) * 100, 100);
-                
-                this.progressBar.style.width = `${progress}%`;
-                this.currentTime.textContent = this.formatTime(trackElapsed);
-            }
-
             startProgressUpdates() {
                 this.syncInterval = setInterval(() => {
-                    this.updatePlayback();
+                    this.updateUI();
                 }, 1000);
+            }
+
+            updateUI() {
+                const track = this.playlist[this.currentTrackIndex];
+                const trackDuration = this.trackDurations[track.file] || this.audio.duration;
+                
+                if (trackDuration && this.audio.duration) {
+                    const progress = Math.min((this.audio.currentTime / trackDuration) * 100, 100);
+                    this.progressBar.style.width = `${progress}%`;
+                    this.currentTime.textContent = this.formatTime(this.audio.currentTime);
+                }
             }
 
             showAutoplayMessage() {
@@ -356,9 +417,9 @@
             }
 
             formatTime(seconds) {
-                const safeSeconds = Math.max(0, seconds);
-                const mins = Math.floor(safeSeconds / 60);
-                const secs = Math.floor(safeSeconds % 60);
+                if (isNaN(seconds) || seconds < 0) return "0:00";
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
             }
         }
