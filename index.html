@@ -192,7 +192,7 @@
             constructor() {
                 this.playlist = [];
                 this.currentTrackIndex = 0;
-                this.trackStartTime = null;
+                this.trackStartTimestamp = null;
                 this.syncInterval = null;
                 
                 this.audio = document.getElementById('audioPlayer');
@@ -214,7 +214,8 @@
                 try {
                     // Load playlist
                     const playlistResponse = await fetch('playlist.json');
-                    this.playlist = (await playlistResponse.json()).playlist;
+                    const data = await playlistResponse.json();
+                    this.playlist = data.playlist;
                     
                     // Start sync system
                     this.startSyncSystem();
@@ -227,22 +228,21 @@
             }
 
             startSyncSystem() {
-                // Calculate track based on current time (ensures sync for all users)
-                const now = new Date();
-                const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-                const segmentDuration = 5; // Change track every 5 minutes
-                
-                this.currentTrackIndex = Math.floor(minutesSinceMidnight / segmentDuration) % this.playlist.length;
-                this.trackStartTime = new Date();
-                this.trackStartTime.setMinutes(Math.floor(minutesSinceMidnight / segmentDuration) * segmentDuration, 0, 0);
+                // Simple sequential playback instead of time-based to avoid timezone issues
+                this.currentTrackIndex = 0;
+                this.trackStartTimestamp = Date.now();
                 
                 this.playCurrentTrack();
                 this.startProgressUpdates();
                 
-                this.syncStatus.textContent = '🟢 Live - Synced to broadcast';
+                this.syncStatus.textContent = '🟢 Live - Sequential Playback';
             }
 
             playCurrentTrack() {
+                if (this.currentTrackIndex >= this.playlist.length) {
+                    this.currentTrackIndex = 0; // Loop back to start
+                }
+
                 const track = this.playlist[this.currentTrackIndex];
                 const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
                 const nextTrack = this.playlist[nextTrackIndex];
@@ -253,17 +253,24 @@
                 this.nextTrack.textContent = nextTrack.title;
                 this.totalTime.textContent = this.formatTime(track.duration);
                 
+                // Reset track start time
+                this.trackStartTimestamp = Date.now();
+                
                 // Auto-play the track
                 this.audio.src = track.file;
                 this.audio.play().catch(error => {
                     console.log('Autoplay blocked:', error);
-                    // Show play button if autoplay is blocked
                     this.showAutoplayMessage();
                 });
             }
 
             showAutoplayMessage() {
-                this.syncStatus.innerHTML = '🔴 Autoplay blocked. <button onclick="window.radioStation.audio.play()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Click to Play</button>';
+                this.syncStatus.innerHTML = '🔴 Autoplay blocked. <button onclick="window.radioStation.resumePlayback()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Click to Play</button>';
+            }
+
+            resumePlayback() {
+                this.audio.play().catch(console.error);
+                this.syncStatus.textContent = '🟢 Live - Sequential Playback';
             }
 
             startProgressUpdates() {
@@ -274,26 +281,27 @@
             }
 
             updateProgress() {
-                if (!this.trackStartTime) return;
+                if (!this.trackStartTimestamp) return;
                 
                 const track = this.playlist[this.currentTrackIndex];
-                const now = new Date();
-                const elapsed = (now - this.trackStartTime) / 1000;
-                const progress = Math.min((elapsed / track.duration) * 100, 100);
+                const elapsed = (Date.now() - this.trackStartTimestamp) / 1000;
+                
+                // Ensure we don't show negative time
+                const safeElapsed = Math.max(0, elapsed);
+                const progress = Math.min((safeElapsed / track.duration) * 100, 100);
                 
                 this.progressBar.style.width = `${progress}%`;
-                this.currentTime.textContent = this.formatTime(elapsed);
+                this.currentTime.textContent = this.formatTime(safeElapsed);
                 
-                // Keep audio in sync
-                if (Math.abs(this.audio.currentTime - elapsed) > 2) {
-                    this.audio.currentTime = elapsed;
+                // Keep audio in sync (but don't force if it's close)
+                if (Math.abs(this.audio.currentTime - safeElapsed) > 3) {
+                    this.audio.currentTime = safeElapsed;
                 }
             }
 
             checkTrackAdvancement() {
                 const track = this.playlist[this.currentTrackIndex];
-                const now = new Date();
-                const elapsed = (now - this.trackStartTime) / 1000;
+                const elapsed = (Date.now() - this.trackStartTimestamp) / 1000;
                 
                 if (elapsed >= track.duration) {
                     this.advanceToNextTrack();
@@ -302,19 +310,13 @@
 
             advanceToNextTrack() {
                 this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                const now = new Date();
-                const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-                const segmentDuration = 5;
-                
-                this.trackStartTime = new Date();
-                this.trackStartTime.setMinutes(Math.floor(minutesSinceMidnight / segmentDuration) * segmentDuration, 0, 0);
-                
                 this.playCurrentTrack();
             }
 
             formatTime(seconds) {
-                const mins = Math.floor(seconds / 60);
-                const secs = Math.floor(seconds % 60);
+                const safeSeconds = Math.max(0, seconds); // Prevent negative numbers
+                const mins = Math.floor(safeSeconds / 60);
+                const secs = Math.floor(safeSeconds % 60);
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
             }
         }
