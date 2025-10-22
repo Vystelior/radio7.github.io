@@ -178,11 +178,11 @@
                 <div class="up-next">
                     Next: <span id="nextTrack" class="loading">syncing...</span>
                 </div>
-                <div class="sync-status" id="syncStatus">🟡 Connecting to broadcast...</div>
+                <div class="sync-status" id="syncStatus">🟡 Connecting to broadcast server...</div>
             </div>
 
             <div class="listeners">
-                📻 Live Broadcast - Synced for All Listeners
+                📻 Live Broadcast - Server Synced
             </div>
         </div>
     </div>
@@ -192,8 +192,9 @@
             constructor() {
                 this.playlist = [];
                 this.currentTrackIndex = 0;
-                this.trackStartTimestamp = null;
+                this.globalStartTime = null;
                 this.syncInterval = null;
+                this.serverTimeOffset = 0;
                 
                 this.audio = document.getElementById('audioPlayer');
                 this.trackTitle = document.getElementById('trackTitle');
@@ -204,7 +205,6 @@
                 this.totalTime = document.getElementById('totalTime');
                 this.syncStatus = document.getElementById('syncStatus');
 
-                // Disable audio controls
                 this.audio.controls = false;
                 
                 this.initializeStation();
@@ -212,56 +212,138 @@
 
             async initializeStation() {
                 try {
-                    // Load playlist
+                    // Load playlist first
                     const playlistResponse = await fetch('playlist.json');
                     const data = await playlistResponse.json();
                     this.playlist = data.playlist;
                     
-                    // Start sync system
-                    this.startSyncSystem();
+                    // Sync with server time
+                    await this.syncWithServer();
+                    
+                    // Calculate global start time (fixed point in time that all users sync to)
+                    this.calculateGlobalStartTime();
+                    
+                    // Start playback
+                    this.startPlayback();
                     
                 } catch (error) {
                     console.error('Error initializing station:', error);
-                    this.syncStatus.textContent = '🔴 Failed to load broadcast';
-                    this.trackTitle.textContent = 'Broadcast offline';
+                    this.syncStatus.textContent = '🔴 Broadcast offline - Using local time';
+                    this.startLocalPlayback();
                 }
             }
 
-            startSyncSystem() {
-                // Simple sequential playback instead of time-based to avoid timezone issues
-                this.currentTrackIndex = 0;
-                this.trackStartTimestamp = Date.now();
+            async syncWithServer() {
+                // Get server time to calculate offset
+                const startTime = Date.now();
+                const response = await fetch('/api/sync');
+                const data = await response.json();
+                const endTime = Date.now();
                 
-                this.playCurrentTrack();
+                // Calculate round-trip time and server time offset
+                const rtt = endTime - startTime;
+                const estimatedServerTime = data.serverTime + (rtt / 2);
+                this.serverTimeOffset = estimatedServerTime - endTime;
+                
+                this.syncStatus.textContent = '🟢 Synced with server';
+            }
+
+            calculateGlobalStartTime() {
+                // All users start from the same fixed time (e.g., beginning of current hour)
+                const now = Date.now() + this.serverTimeOffset;
+                const startOfHour = Math.floor(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
+                this.globalStartTime = startOfHour;
+            }
+
+            startPlayback() {
                 this.startProgressUpdates();
-                
-                this.syncStatus.textContent = '🟢 Live - Sequential Playback';
+                this.updatePlayback();
             }
 
-            playCurrentTrack() {
-                if (this.currentTrackIndex >= this.playlist.length) {
-                    this.currentTrackIndex = 0; // Loop back to start
-                }
+            startLocalPlayback() {
+                // Fallback: use local time if server sync fails
+                this.globalStartTime = Date.now();
+                this.startProgressUpdates();
+                this.updatePlayback();
+            }
 
+            getCurrentPlaybackPosition() {
+                const now = Date.now() + this.serverTimeOffset;
+                const elapsed = (now - this.globalStartTime) / 1000; // Convert to seconds
+                return Math.max(0, elapsed);
+            }
+
+            updatePlayback() {
+                const totalElapsed = this.getCurrentPlaybackPosition();
+                
+                // Calculate which track should be playing based on total elapsed time
+                let accumulatedTime = 0;
+                let trackIndex = 0;
+                let trackElapsed = 0;
+                
+                for (let i = 0; i < this.playlist.length; i++) {
+                    const track = this.playlist[i];
+                    if (totalElapsed < accumulatedTime + track.duration) {
+                        trackIndex = i;
+                        trackElapsed = totalElapsed - accumulatedTime;
+                        break;
+                    }
+                    accumulatedTime += track.duration;
+                    
+                    // Loop back to start if we've gone through entire playlist
+                    if (i === this.playlist.length - 1) {
+                        this.globalStartTime += accumulatedTime * 1000;
+                        return this.updatePlayback(); // Recursive call with adjusted start time
+                    }
+                }
+                
+                // Update current track if changed
+                if (this.currentTrackIndex !== trackIndex) {
+                    this.currentTrackIndex = trackIndex;
+                    this.loadCurrentTrack();
+                }
+                
+                // Update audio position
+                if (this.audio.src && Math.abs(this.audio.currentTime - trackElapsed) > 1) {
+                    this.audio.currentTime = trackElapsed;
+                }
+                
+                // Update UI
+                this.updateUI(trackElapsed);
+            }
+
+            loadCurrentTrack() {
                 const track = this.playlist[this.currentTrackIndex];
                 const nextTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
                 const nextTrack = this.playlist[nextTrackIndex];
                 
-                // Update UI
                 this.trackTitle.textContent = track.title;
                 this.trackType.textContent = track.type === 'song' ? '🎵 Music' : '🗣️ AI Host';
                 this.nextTrack.textContent = nextTrack.title;
                 this.totalTime.textContent = this.formatTime(track.duration);
                 
-                // Reset track start time
-                this.trackStartTimestamp = Date.now();
+                // Only change audio source if it's different
+                if (this.audio.src !== window.location.origin + '/' + track.file) {
+                    this.audio.src = track.file;
+                    this.audio.play().catch(error => {
+                        console.log('Autoplay blocked:', error);
+                        this.showAutoplayMessage();
+                    });
+                }
+            }
+
+            updateUI(trackElapsed) {
+                const track = this.playlist[this.currentTrackIndex];
+                const progress = Math.min((trackElapsed / track.duration) * 100, 100);
                 
-                // Auto-play the track
-                this.audio.src = track.file;
-                this.audio.play().catch(error => {
-                    console.log('Autoplay blocked:', error);
-                    this.showAutoplayMessage();
-                });
+                this.progressBar.style.width = `${progress}%`;
+                this.currentTime.textContent = this.formatTime(trackElapsed);
+            }
+
+            startProgressUpdates() {
+                this.syncInterval = setInterval(() => {
+                    this.updatePlayback();
+                }, 1000);
             }
 
             showAutoplayMessage() {
@@ -270,51 +352,11 @@
 
             resumePlayback() {
                 this.audio.play().catch(console.error);
-                this.syncStatus.textContent = '🟢 Live - Sequential Playback';
-            }
-
-            startProgressUpdates() {
-                this.syncInterval = setInterval(() => {
-                    this.updateProgress();
-                    this.checkTrackAdvancement();
-                }, 1000);
-            }
-
-            updateProgress() {
-                if (!this.trackStartTimestamp) return;
-                
-                const track = this.playlist[this.currentTrackIndex];
-                const elapsed = (Date.now() - this.trackStartTimestamp) / 1000;
-                
-                // Ensure we don't show negative time
-                const safeElapsed = Math.max(0, elapsed);
-                const progress = Math.min((safeElapsed / track.duration) * 100, 100);
-                
-                this.progressBar.style.width = `${progress}%`;
-                this.currentTime.textContent = this.formatTime(safeElapsed);
-                
-                // Keep audio in sync (but don't force if it's close)
-                if (Math.abs(this.audio.currentTime - safeElapsed) > 3) {
-                    this.audio.currentTime = safeElapsed;
-                }
-            }
-
-            checkTrackAdvancement() {
-                const track = this.playlist[this.currentTrackIndex];
-                const elapsed = (Date.now() - this.trackStartTimestamp) / 1000;
-                
-                if (elapsed >= track.duration) {
-                    this.advanceToNextTrack();
-                }
-            }
-
-            advanceToNextTrack() {
-                this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
-                this.playCurrentTrack();
+                this.syncStatus.textContent = '🟢 Live - Server Synced';
             }
 
             formatTime(seconds) {
-                const safeSeconds = Math.max(0, seconds); // Prevent negative numbers
+                const safeSeconds = Math.max(0, seconds);
                 const mins = Math.floor(safeSeconds / 60);
                 const secs = Math.floor(safeSeconds % 60);
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
