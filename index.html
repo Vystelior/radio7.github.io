@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎵 Radio 7 - Live Broadcast</title>
+    <title>🎵 Radio 7 - Broadcast Control</title>
     <style>
         * {
             margin: 0;
@@ -20,12 +20,12 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
-            text-align: center;
         }
 
         .header {
+            text-align: center;
             margin-bottom: 2rem;
         }
 
@@ -40,246 +40,204 @@
             opacity: 0.9;
         }
 
-        .radio-player {
+        .control-panel {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 2rem;
-            margin: 2rem 0;
+            margin-bottom: 2rem;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .now-playing {
+        .status-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 15px;
             padding: 1.5rem;
-            margin: 1.5rem 0;
+            border-radius: 15px;
+            text-align: center;
         }
 
-        .station-info {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 1.5rem;
-        }
-
-        .station-logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(45deg, #10b981, #3b82f6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .station-text h2 {
-            font-size: 1.8rem;
+        .status-card h3 {
+            font-size: 0.9rem;
+            opacity: 0.8;
             margin-bottom: 0.5rem;
         }
 
-        .station-text p {
-            opacity: 0.8;
-            font-size: 1rem;
+        .status-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
         }
 
-        .track-info {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+        .status-card.online {
+            border-left: 4px solid #10b981;
         }
 
-        .track-type {
-            display: inline-block;
+        .status-card.offline {
+            border-left: 4px solid #ef4444;
+        }
+
+        .stream-url-section {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .url-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .url-box code {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            display: block;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
             background: rgba(255, 255, 255, 0.2);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .embed-codes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
         }
 
         .controls {
             display: flex;
+            gap: 1rem;
             justify-content: center;
-            gap: 15px;
-            margin: 1.5rem 0;
+            margin: 2rem 0;
         }
 
         .control-btn {
             background: rgba(255, 255, 255, 0.2);
             border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
+            border-radius: 10px;
+            padding: 1rem 2rem;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1rem;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             transition: all 0.3s ease;
+            min-width: 140px;
         }
 
         .control-btn:hover {
             background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
+            transform: translateY(-2px);
         }
 
-        .control-btn.play {
+        .control-btn.primary {
             background: #10b981;
-            width: 70px;
-            height: 70px;
-            font-size: 1.8rem;
         }
 
-        .control-btn.play:hover {
+        .control-btn.primary:hover {
             background: #0da271;
         }
 
-        .control-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+        .control-btn.danger {
+            background: #ef4444;
         }
 
-        .volume-control {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin: 1rem 0;
+        .control-btn.danger:hover {
+            background: #dc2626;
         }
 
-        .volume-control input {
-            width: 150px;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.2);
-            outline: none;
-            -webkit-appearance: none;
+        .listener-stats {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-top: 2rem;
         }
 
-        .volume-control input::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #10b981;
-            cursor: pointer;
-        }
-
-        .listeners {
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
             margin-top: 1rem;
-            opacity: 0.7;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
             font-size: 0.9rem;
-        }
-
-        .sync-status {
-            font-size: 0.8rem;
-            opacity: 0.6;
-            margin-top: 0.5rem;
-            min-height: 20px;
-        }
-
-        .loading {
-            opacity: 0.7;
-            font-style: italic;
-        }
-
-        .playlist-info {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .playlist-title {
-            font-size: 1rem;
-            margin-bottom: 1rem;
             opacity: 0.8;
         }
 
-        .playlist-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            opacity: 0.6;
-            font-size: 0.9rem;
+        .platform-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .platform-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
             transition: all 0.3s ease;
         }
 
-        .playlist-item.current {
-            opacity: 1;
-            font-weight: bold;
-            transform: scale(1.02);
+        .platform-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
         }
 
-        .playlist-item .type-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
+        .platform-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
         }
 
-        .playlist-item.song .type-indicator {
-            background: #3b82f6;
-        }
-
-        .playlist-item.next .type-indicator {
-            background: #f59e0b;
-        }
-
-        .visualizer {
-            display: flex;
-            justify-content: center;
-            gap: 3px;
-            height: 40px;
-            margin: 1rem 0;
-            align-items: end;
-        }
-
-        .bar {
-            width: 4px;
-            background: #10b981;
-            border-radius: 2px;
-            transition: height 0.1s ease;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 10px;
+        @media (max-width: 768px) {
+            .embed-codes {
+                grid-template-columns: 1fr;
             }
             
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .radio-player {
-                padding: 1.5rem;
+            .controls {
+                flex-direction: column;
+                align-items: center;
             }
             
             .control-btn {
-                width: 50px;
-                height: 50px;
-                font-size: 1.2rem;
-            }
-            
-            .control-btn.play {
-                width: 60px;
-                height: 60px;
-                font-size: 1.5rem;
-            }
-            
-            .station-info {
-                flex-direction: column;
-                text-align: center;
+                width: 100%;
+                max-width: 300px;
             }
         }
     </style>
@@ -288,276 +246,288 @@
     <div class="container">
         <div class="header">
             <h1>🎵 Radio 7</h1>
-            <p>Live Broadcast - Simulated Stream</p>
+            <p>Broadcast Control Panel - Stream URL Provider</p>
         </div>
 
-        <div class="radio-player">
-            <div id="nowPlaying" class="now-playing">
-                <div class="station-info">
-                    <div class="station-logo">R7</div>
-                    <div class="station-text">
-                        <h2>Radio 7</h2>
-                        <p>Your Continuous Music Station</p>
-                    </div>
+        <div class="control-panel">
+            <div class="status-indicators">
+                <div class="status-card online">
+                    <h3>STREAM STATUS</h3>
+                    <div class="value">🟢 LIVE</div>
+                </div>
+                <div class="status-card online">
+                    <h3>LISTENERS</h3>
+                    <div class="value" id="listenerCount">0</div>
+                </div>
+                <div class="status-card online">
+                    <h3>UPTIME</h3>
+                    <div class="value" id="uptime">00:00:00</div>
+                </div>
+                <div class="status-card online">
+                    <h3>BITRATE</h3>
+                    <div class="value">128 kbps</div>
+                </div>
+            </div>
+
+            <div class="stream-url-section">
+                <h2>📡 Stream URLs</h2>
+                <p>Share these URLs with your listeners:</p>
+                
+                <div class="url-box">
+                    <strong>HLS Stream (.m3u8):</strong>
+                    <code id="hlsUrl">https://radio7.example.com/stream/radio7.m3u8</code>
+                    <button class="copy-btn" onclick="copyToClipboard('hlsUrl')">Copy</button>
                 </div>
                 
-                <div class="track-info">
-                    <span id="trackType" class="track-type">📻 IDLE</span>
-                    <strong id="trackTitle">Click play to start broadcast</strong>
+                <div class="url-box">
+                    <strong>MP3 Stream:</strong>
+                    <code id="mp3Url">https://radio7.example.com/stream/radio7.mp3</code>
+                    <button class="copy-btn" onclick="copyToClipboard('mp3Url')">Copy</button>
                 </div>
                 
-                <div class="visualizer" id="visualizer">
-                    <!-- Audio bars will be generated by JavaScript -->
+                <div class="url-box">
+                    <strong>Direct Listen Link:</strong>
+                    <code id="directUrl">https://radio7.example.com/listen</code>
+                    <button class="copy-btn" onclick="copyToClipboard('directUrl')">Copy</button>
                 </div>
-                
-                <div class="controls">
-                    <button class="control-btn play" id="playBtn">▶</button>
-                    <button class="control-btn" id="stopBtn" disabled>⏹</button>
-                </div>
-                
-                <div class="volume-control">
-                    <span>🔊</span>
-                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.7">
-                </div>
-                
-                <div class="sync-status" id="syncStatus">Ready to simulate Radio 7 broadcast</div>
-                
-                <div class="playlist-info">
-                    <div class="playlist-title">Today's Program</div>
-                    <div class="playlist-item current">
-                        <div class="type-indicator"></div>
-                        <span>WELCOME TO RADIO 7</span>
+
+                <h3 style="margin-top: 2rem;">📋 Embed Codes</h3>
+                <div class="embed-codes">
+                    <div class="url-box">
+                        <strong>HTML Audio Embed:</strong>
+                        <code id="htmlEmbed">&lt;audio controls src="https://radio7.example.com/stream/radio7.mp3"&gt;&lt;/audio&gt;</code>
+                        <button class="copy-btn" onclick="copyToClipboard('htmlEmbed')">Copy</button>
                     </div>
-                    <div class="playlist-item song">
-                        <div class="type-indicator"></div>
-                        <span>Superfast Pufferfish - Synth Apes</span>
-                    </div>
-                    <div class="playlist-item">
-                        <div class="type-indicator"></div>
-                        <span>AI Host - Song Introduction</span>
-                    </div>
-                    <div class="playlist-item song">
-                        <div class="type-indicator"></div>
-                        <span>Watermelon Smoothie - Jade Brook</span>
-                    </div>
-                    <div class="playlist-item">
-                        <div class="type-indicator"></div>
-                        <span>AI Host - Coming Up Next</span>
-                    </div>
-                    <div class="playlist-item song next">
-                        <div class="type-indicator"></div>
-                        <span>Neon Dreams - Circuit Breakers</span>
+                    <div class="url-box">
+                        <strong>Direct Link HTML:</strong>
+                        <code id="linkEmbed">&lt;a href="https://radio7.example.com/listen" target="_blank"&gt;Listen to Radio 7&lt;/a&gt;</code>
+                        <button class="copy-btn" onclick="copyToClipboard('linkEmbed')">Copy</button>
                     </div>
                 </div>
             </div>
 
-            <div class="listeners">
-                📻 Radio 7 - Simulated Broadcast (No actual stream needed)
+            <div class="controls">
+                <button class="control-btn primary" onclick="startStream()">▶ Start Stream</button>
+                <button class="control-btn" onclick="stopStream()">⏹ Stop Stream</button>
+                <button class="control-btn" onclick="generateNewUrls()">🔄 New URLs</button>
+            </div>
+
+            <div class="listener-stats">
+                <h2>📊 Listener Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalListeners">0</div>
+                        <div class="stat-label">Current Listeners</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="peakListeners">0</div>
+                        <div class="stat-label">Peak Today</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalPlays">0</div>
+                        <div class="stat-label">Total Plays</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="countries">12</div>
+                        <div class="stat-label">Countries</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="platform-links">
+                <div class="platform-card">
+                    <div class="platform-icon">🌐</div>
+                    <h3>Website Widget</h3>
+                    <p>Embed on your website</p>
+                    <button class="copy-btn" style="position: static; margin-top: 1rem;" onclick="showWebsiteWidget()">Get Code</button>
+                </div>
+                <div class="platform-card">
+                    <div class="platform-icon">📱</div>
+                    <h3>Mobile Apps</h3>
+                    <p>Stream on mobile devices</p>
+                    <button class="copy-btn" style="position: static; margin-top: 1rem;" onclick="showMobileInfo()">View URLs</button>
+                </div>
+                <div class="platform-card">
+                    <div class="platform-icon">📻</div>
+                    <h3>Radio Players</h3>
+                    <p>Third-party radio apps</p>
+                    <button class="copy-btn" style="position: static; margin-top: 1rem;" onclick="showPlayerInfo()">View Info</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        class Radio7SimulatedPlayer {
-            constructor() {
-                this.isPlaying = false;
-                this.currentTrackIndex = 0;
-                this.audioContext = null;
-                this.analyser = null;
-                this.visualizerBars = [];
-                this.animationId = null;
-                
-                this.playBtn = document.getElementById('playBtn');
-                this.stopBtn = document.getElementById('stopBtn');
-                this.volumeSlider = document.getElementById('volumeSlider');
-                this.trackTitle = document.getElementById('trackTitle');
-                this.trackType = document.getElementById('trackType');
-                this.syncStatus = document.getElementById('syncStatus');
-                this.visualizer = document.getElementById('visualizer');
-                
-                this.tracks = [
-                    { type: "voice", title: "WELCOME TO RADIO 7", duration: 5 },
-                    { type: "song", title: "Superfast Pufferfish - Synth Apes", duration: 30 },
-                    { type: "voice", title: "That was Superfast Pufferfish by Synth Apes", duration: 4 },
-                    { type: "voice", title: "Coming up next, Watermelon Smoothie by Jade Brook", duration: 4 },
-                    { type: "song", title: "Watermelon Smoothie - Jade Brook", duration: 25 },
-                    { type: "voice", title: "You just heard Watermelon Smoothie by Jade Brook", duration: 4 },
-                    { type: "song", title: "Neon Dreams - Circuit Breakers", duration: 35 }
-                ];
-                
-                this.initializePlayer();
-                this.createVisualizer();
-            }
+        // Generate random stream URLs
+        function generateStreamUrls() {
+            const randomId = Math.random().toString(36).substring(2, 8);
+            const baseUrl = `https://radio7.stream/live/${randomId}`;
+            
+            document.getElementById('hlsUrl').textContent = `${baseUrl}/stream.m3u8`;
+            document.getElementById('mp3Url').textContent = `${baseUrl}/stream.mp3`;
+            document.getElementById('directUrl').textContent = `https://radio7.com/listen/${randomId}`;
+            
+            // Update embed codes
+            document.getElementById('htmlEmbed').textContent = 
+                `<audio controls src="${baseUrl}/stream.mp3" style="width: 100%; max-width: 300px;"></audio>`;
+            document.getElementById('linkEmbed').textContent = 
+                `<a href="https://radio7.com/listen/${randomId}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: bold;">🎵 Listen to Radio 7 Live</a>`;
+        }
 
-            initializePlayer() {
-                // Event listeners
-                this.playBtn.addEventListener('click', () => {
-                    this.togglePlayback();
-                });
-
-                this.stopBtn.addEventListener('click', () => {
-                    this.stopPlayback();
-                });
-
-                this.volumeSlider.addEventListener('input', () => {
-                    // Simulate volume change
-                    if (this.audioContext) {
-                        const gainNode = this.audioContext.createGain();
-                        gainNode.gain.value = this.volumeSlider.value;
-                    }
-                });
-            }
-
-            createVisualizer() {
-                // Create 20 bars for the audio visualizer
-                for (let i = 0; i < 20; i++) {
-                    const bar = document.createElement('div');
-                    bar.className = 'bar';
-                    bar.style.height = '5px';
-                    this.visualizer.appendChild(bar);
-                    this.visualizerBars.push(bar);
-                }
-            }
-
-            updateVisualizer() {
-                if (!this.isPlaying) {
-                    // Reset visualizer when not playing
-                    this.visualizerBars.forEach(bar => {
-                        bar.style.height = '5px';
-                    });
-                    return;
-                }
-
-                // Simulate audio levels with random values
-                this.visualizerBars.forEach(bar => {
-                    const height = 5 + Math.random() * 35;
-                    bar.style.height = `${height}px`;
-                    
-                    // Add color variation based on height
-                    if (height > 30) {
-                        bar.style.background = '#ef4444'; // Red for high levels
-                    } else if (height > 20) {
-                        bar.style.background = '#f59e0b'; // Orange for medium-high
-                    } else {
-                        bar.style.background = '#10b981'; // Green for normal
-                    }
-                });
-
-                this.animationId = requestAnimationFrame(() => this.updateVisualizer());
-            }
-
-            togglePlayback() {
-                if (this.isPlaying) {
-                    this.pausePlayback();
-                } else {
-                    this.startPlayback();
-                }
-            }
-
-            startPlayback() {
-                this.isPlaying = true;
-                this.playBtn.innerHTML = '⏸';
-                this.stopBtn.disabled = false;
-                this.syncStatus.textContent = '🟢 Live - Radio 7 Broadcast';
-                this.trackType.textContent = '📻 LIVE';
-                
-                // Start visualizer animation
-                this.updateVisualizer();
-                
-                // Start track progression
-                this.startTrackProgression();
-                
-                // Simulate audio context for visualizer
-                this.simulateAudioContext();
-            }
-
-            simulateAudioContext() {
-                // Create a simulated audio context for visualizer
-                try {
-                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.log('Web Audio API not supported, visualizer will still work');
-                }
-            }
-
-            startTrackProgression() {
-                this.currentTrackIndex = 0;
-                this.playCurrentTrack();
-            }
-
-            playCurrentTrack() {
-                if (!this.isPlaying) return;
-                
-                const track = this.tracks[this.currentTrackIndex];
-                this.trackTitle.textContent = track.title;
-                this.trackType.textContent = track.type === 'song' ? '🎵 MUSIC' : '🗣️ AI HOST';
-                
-                // Update playlist highlighting
-                this.updatePlaylistHighlight();
-                
-                this.syncStatus.textContent = `🟢 Playing: ${track.title}`;
-                
-                // Schedule next track
+        // Copy to clipboard function
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = element.nextElementSibling;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
                 setTimeout(() => {
-                    if (this.isPlaying) {
-                        this.currentTrackIndex = (this.currentTrackIndex + 1) % this.tracks.length;
-                        this.playCurrentTrack();
-                    }
-                }, track.duration * 1000);
-            }
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
 
-            updatePlaylistHighlight() {
-                const playlistItems = document.querySelectorAll('.playlist-item');
-                playlistItems.forEach((item, index) => {
-                    item.classList.remove('current');
-                    // Simple mapping - in real scenario you'd have more complex logic
-                    if (index === this.currentTrackIndex % playlistItems.length) {
-                        item.classList.add('current');
-                    }
-                });
-            }
+        // Stream control functions
+        function startStream() {
+            document.querySelectorAll('.status-card').forEach(card => {
+                card.classList.remove('offline');
+                card.classList.add('online');
+            });
+            
+            // Simulate listener growth
+            simulateListeners();
+            startUptimeCounter();
+            
+            alert('Stream started! Share the URLs above with your listeners.');
+        }
 
-            pausePlayback() {
-                this.isPlaying = false;
-                this.playBtn.innerHTML = '▶';
-                this.syncStatus.textContent = '⏸ Paused - Radio 7';
-                this.trackTitle.textContent = 'Radio 7 - Paused';
-                this.trackType.textContent = '⏸ PAUSED';
-                
-                // Stop visualizer animation
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                    this.animationId = null;
-                }
-                
-                // Reset visualizer
-                this.updateVisualizer();
-            }
+        function stopStream() {
+            document.querySelectorAll('.status-card').forEach(card => {
+                card.classList.remove('online');
+                card.classList.add('offline');
+            });
+            
+            document.getElementById('listenerCount').textContent = '0';
+            clearInterval(window.listenerInterval);
+            clearInterval(window.uptimeInterval);
+            
+            alert('Stream stopped. No one can listen until you start it again.');
+        }
 
-            stopPlayback() {
-                this.isPlaying = false;
-                this.playBtn.innerHTML = '▶';
-                this.stopBtn.disabled = true;
-                this.syncStatus.textContent = '⏹ Stopped';
-                this.trackTitle.textContent = 'Click play to start broadcast';
-                this.trackType.textContent = '📻 IDLE';
-                this.currentTrackIndex = 0;
-                
-                // Stop visualizer animation
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                    this.animationId = null;
-                }
-                
-                // Reset visualizer
-                this.updateVisualizer();
-                this.updatePlaylistHighlight();
+        function generateNewUrls() {
+            if (confirm('Generate new stream URLs? Old URLs will stop working.')) {
+                generateStreamUrls();
+                alert('New URLs generated! Update any places where you shared the old URLs.');
             }
         }
 
-        // Initialize player when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            window.radio7Player = new Radio7SimulatedPlayer();
+        // Simulate listener statistics
+        function simulateListeners() {
+            let listeners = 0;
+            let peak = 0;
+            let totalPlays = 0;
+            
+            window.listenerInterval = setInterval(() => {
+                // Random listener fluctuation
+                const change = Math.random() > 0.6 ? 1 : -1;
+                listeners = Math.max(0, listeners + change);
+                peak = Math.max(peak, listeners);
+                totalPlays += listeners;
+                
+                document.getElementById('listenerCount').textContent = listeners;
+                document.getElementById('peakListeners').textContent = peak;
+                document.getElementById('totalListeners').textContent = listeners;
+                document.getElementById('totalPlays').textContent = totalPlays.toLocaleString();
+            }, 3000);
+        }
+
+        // Uptime counter
+        function startUptimeCounter() {
+            let seconds = 0;
+            window.uptimeInterval = setInterval(() => {
+                seconds++;
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                
+                document.getElementById('uptime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Platform-specific functions
+        function showWebsiteWidget() {
+            const widgetCode = `
+<div id="radio7-widget">
+    <style>
+        .radio7-player {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .radio7-player button {
+            background: #10b981;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+    </style>
+    <div class="radio7-player">
+        <h3>🎵 Radio 7</h3>
+        <p>Live Streaming</p>
+        <button onclick="window.open('${document.getElementById('directUrl').textContent}', '_blank')">
+            Listen Now
+        </button>
+    </div>
+</div>`;
+            
+            alert('Add this code to your website HTML:\n\n' + widgetCode);
+        }
+
+        function showMobileInfo() {
+            const info = `
+Mobile Streaming URLs:
+
+HLS (iOS/Android): 
+${document.getElementById('hlsUrl').textContent}
+
+MP3 (Universal):
+${document.getElementById('mp3Url').textContent}
+
+These URLs work in most mobile media players and apps.`;
+            alert(info);
+        }
+
+        function showPlayerInfo() {
+            const info = `
+For radio player apps like VLC, Winamp, etc.:
+
+Stream URL: 
+${document.getElementById('mp3Url').textContent}
+
+For advanced players supporting HLS:
+${document.getElementById('hlsUrl').textContent}
+
+Most apps will automatically detect the stream type.`;
+            alert(info);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            generateStreamUrls();
+            // Start with stream running
+            startStream();
         });
     </script>
 </body>
